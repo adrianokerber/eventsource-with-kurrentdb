@@ -26,11 +26,15 @@ public class PayrollLoansRepository(EventStoreClient client)
     public async Task<List<Event>> GetEventsAsync(CancellationToken cancellationToken = default)
     {
         var events = new List<Event>();
-        var result = client.ReadAllAsync(Direction.Forwards, Position.Start, StreamFilter.Prefix(StreamNamePrefix), cancellationToken: cancellationToken);
+        var result = client.ReadStreamAsync(Direction.Forwards, StreamName(Guid.Parse("7ba6b879-f324-41f5-be94-cc17ab3fb65f")), StreamPosition.Start, cancellationToken: cancellationToken);
+        // TODO: why the method below does not work?
+        //var result = client.ReadAllAsync(Direction.Forwards, Position.Start, StreamFilter.Prefix(StreamNamePrefix), cancellationToken: cancellationToken);
 
         await foreach (var resolvedEvent in result)
         {
-            var @event = JsonSerializer.Deserialize<Event>(resolvedEvent.Event.Data.ToString());
+            var eventType = Type.GetType($"event_sourcing.Domain.PayrollLoan.Events.{resolvedEvent.Event.EventType}");
+            var jsonString = Encoding.UTF8.GetString(resolvedEvent.Event.Data.ToArray());
+            var @event = JsonSerializer.Deserialize<PayrollLoanCreated>(resolvedEvent.Event.Data.Span);
             events.Add(@event);
         }
 
